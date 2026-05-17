@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Regression Test Generator</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
+:root{--bg:#080c14;--surface:#0d1321;--surface2:#141d2e;--surface3:#1a2540;--border:rgba(99,179,237,0.12);--border2:rgba(99,179,237,0.25);--text:#e8f0fe;--muted:#6b7fa3;--accent:#3b82f6;--accent2:#60a5fa;--critical:#f87171;--high:#fb923c;--medium:#fbbf24;--low:#34d399}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:400px;background:radial-gradient(ellipse,rgba(59,130,246,0.08) 0%,transparent 70%);pointer-events:none;z-index:0}
+.header{position:relative;z-index:1;padding:28px 48px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:rgba(8,12,20,0.8);backdrop-filter:blur(10px)}
+.logo{display:flex;align-items:center;gap:14px}
+.logo-shield{width:42px;height:42px;background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:10px;border:1px solid rgba(59,130,246,0.4);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 20px rgba(59,130,246,0.2)}
+.logo-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:2px}
+.logo-sub{font-size:0.68rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:1px}
+.badge-spring{background:linear-gradient(135deg,rgba(34,197,94,0.2),rgba(16,185,129,0.2));border:1px solid rgba(34,197,94,0.4);color:#4ade80;padding:5px 14px;border-radius:50px;font-size:0.7rem;font-family:'IBM Plex Mono',monospace;letter-spacing:1px}
+.main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:40px 48px 80px}
+.upload-section{margin-bottom:32px}
+.tabs{display:flex;gap:8px;margin-bottom:20px}
+.tab{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:10px 24px;border-radius:8px;font-size:0.85rem;cursor:pointer;font-family:'IBM Plex Mono',monospace;transition:all 0.2s;display:flex;align-items:center;gap:8px}
+.tab.active{background:rgba(59,130,246,0.15);border-color:var(--accent);color:var(--accent2)}
+.upload-zone{border:2px dashed var(--border2);border-radius:16px;padding:50px 40px;text-align:center;cursor:pointer;transition:all 0.3s;background:var(--surface);position:relative;overflow:hidden}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--surface2)}
+.upload-icon{font-size:3rem;margin-bottom:12px;display:block}
+.upload-title{font-size:1.1rem;font-weight:600;margin-bottom:6px}
+.upload-sub{font-size:0.82rem;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+.upload-sub span{color:var(--accent2);background:rgba(59,130,246,0.1);padding:2px 8px;border-radius:4px;margin:0 2px}
+#fileInput{display:none}
+.scan-btn{width:100%;margin-top:16px;padding:15px;background:linear-gradient(135deg,#1d4ed8,#2563eb);border:1px solid rgba(99,179,237,0.3);border-radius:12px;color:white;font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:3px;cursor:pointer;transition:all 0.3s}
+.scan-btn:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(37,99,235,0.4)}
+.scan-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.loading{display:none;text-align:center;padding:60px 20px}
+.loading.active{display:block}
+.loader-ring{width:56px;height:56px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-steps{display:flex;flex-direction:column;gap:8px;max-width:280px;margin:16px auto 0}
+.loading-step{display:flex;align-items:center;gap:10px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;color:var(--muted);padding:8px 14px;border-radius:8px;background:var(--surface);border:1px solid var(--border);transition:all 0.3s}
+.loading-step.done{color:var(--low);border-color:rgba(52,211,153,0.3)}
+.loading-step.active{color:var(--accent2);border-color:rgba(96,165,250,0.3);background:var(--surface2)}
+.step-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.step-dot.spinning{animation:pulse 1s ease infinite}
+#results{display:none}
+#results.active{display:block}
+.result-header{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px 28px;display:flex;align-items:center;gap:24px;margin-bottom:20px;flex-wrap:wrap}
+.score-ring{position:relative;width:88px;height:88px;flex-shrink:0}
+.score-ring svg{transform:rotate(-90deg)}
+.score-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.score-num{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;line-height:1}
+.score-lbl{font-size:0.6rem;color:var(--muted)}
+.result-meta h2{font-size:1.05rem;font-weight:600;margin-bottom:4px}
+.result-meta p{font-size:0.83rem;color:var(--muted);max-width:500px}
+.result-actions{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text);padding:8px 16px;border-radius:8px;font-size:0.8rem;cursor:pointer;transition:all 0.2s}
+.btn-outline:hover{background:var(--surface2);border-color:var(--accent)}
+.btn-pdf{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#fca5a5}
+.btn-pdf:hover{background:rgba(239,68,68,0.25)}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+.kpi-n{font-family:'Bebas Neue',sans-serif;font-size:2rem;line-height:1;margin-bottom:4px}
+.kpi-l{font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:'IBM Plex Mono',monospace}
+.sec-title{font-size:0.7rem;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:12px}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.vuln-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.vuln-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;border-left:3px solid var(--muted);transition:all 0.2s}
+.vuln-card:hover{background:var(--surface2)}
+.vuln-card.sev-CRITICAL{border-left-color:var(--critical)}
+.vuln-card.sev-HIGH{border-left-color:var(--high)}
+.vuln-card.sev-MEDIUM{border-left-color:var(--medium)}
+.vuln-card.sev-LOW{border-left-color:var(--low)}
+.vuln-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.sev-badge{font-size:0.65rem;font-weight:700;font-family:'IBM Plex Mono',monospace;padding:2px 9px;border-radius:50px;letter-spacing:0.5px}
+.sev-badge.CRITICAL{background:rgba(248,113,113,0.15);color:var(--critical);border:1px solid rgba(248,113,113,0.3)}
+.sev-badge.HIGH{background:rgba(251,146,60,0.15);color:var(--high);border:1px solid rgba(251,146,60,0.3)}
+.sev-badge.MEDIUM{background:rgba(251,191,36,0.15);color:var(--medium);border:1px solid rgba(251,191,36,0.3)}
+.sev-badge.LOW{background:rgba(52,211,153,0.15);color:var(--low);border:1px solid rgba(52,211,153,0.3)}
+.vuln-name{font-weight:600;font-size:0.9rem}
+.cwe-pill{font-size:0.65rem;font-family:'IBM Plex Mono',monospace;color:#818cf8;background:rgba(99,102,241,0.12);padding:2px 8px;border-radius:4px;margin-left:auto}
+.vuln-desc{font-size:0.8rem;color:var(--muted);margin-bottom:6px}
+.vuln-line{font-family:'IBM Plex Mono',monospace;font-size:0.73rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:#fcd34d;overflow-x:auto;white-space:nowrap}
+.vuln-rec{font-size:0.76rem;color:#86efac;margin-top:6px;padding-left:10px;border-left:2px solid rgba(52,211,153,0.3)}
+.tests-section{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 24px;margin-bottom:20px}
+.tests-code{background:#0a0f1a;border:1px solid var(--border);border-radius:10px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:0.73rem;color:#a5b4fc;overflow-x:auto;white-space:pre;max-height:300px;overflow-y:auto;line-height:1.6}
+.gate-banner{border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:14px;font-weight:600;font-size:0.95rem}
+.gate-banner.blocked{background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:var(--critical)}
+.gate-banner.pass{background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);color:var(--low)}
+.gate-icon{font-size:1.6rem}
+.gate-text p{font-size:0.8rem;opacity:0.8;font-weight:400;margin-top:2px}
+.history-section{margin-top:40px}
+.history-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;cursor:pointer;transition:all 0.2s;flex-wrap:wrap;gap:8px}
+.history-card:hover{background:var(--surface2);border-color:var(--accent)}
+.history-info{display:flex;align-items:center;gap:12px}
+.history-file{font-size:0.85rem;font-weight:600}
+.history-date{font-size:0.75rem;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+.history-score{font-family:'Bebas Neue',sans-serif;font-size:1.3rem}
+.rescan-btn{display:block;width:100%;margin-top:28px;padding:12px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.8rem;cursor:pointer;transition:all 0.2s;letter-spacing:1px}
+.rescan-btn:hover{color:var(--text);border-color:var(--accent)}
+.api-status{display:flex;align-items:center;gap:6px;font-size:0.72rem;font-family:'IBM Plex Mono',monospace;color:var(--muted)}
+.api-dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.api-dot.online{background:var(--low);box-shadow:0 0 8px rgba(52,211,153,0.5)}
+.empty-history{text-align:center;padding:40px;color:var(--muted);font-size:0.85rem}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-shield">🔒</div>
+    <div>
+      <div class="logo-title">SECTEST · GENERATOR</div>
+      <div class="logo-sub">Spring Boot REST API — DevSecOps Pipeline</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="api-status">
+      <div class="api-dot" id="apiDot"></div>
+      <span id="apiStatusText">Connexion API...</span>
+    </div>
+    <div class="badge-spring">⚡ SPRING BOOT</div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Upload -->
+  <div class="upload-section" id="uploadSection">
+    <div class="tabs">
+      <div class="tab active" data-type="code">📄 Code Source</div>
+      <div class="tab" data-type="apk">📱 Fichier APK</div>
+    </div>
+
+    <div class="upload-zone" id="dropZone">
+      <span class="upload-icon" id="uploadIcon">📄</span>
+      <div class="upload-title" id="uploadTitle">Déposez votre fichier de code ici</div>
+      <div class="upload-sub" id="uploadSub">
+        Formats acceptés : <span>.java</span> <span>.py</span> <span>.js</span> <span>.ts</span>
+      </div>
+      <div class="upload-sub" style="margin-top:6px;font-size:0.72rem">ou cliquez pour sélectionner</div>
+      <input type="file" id="fileInput" accept=".java,.py,.js,.ts,.apk">
+    </div>
+
+    <div id="fileInfo" style="display:none;margin-top:12px;padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:'IBM Plex Mono',monospace;color:var(--accent2)"></div>
+
+    <button class="scan-btn" id="scanBtn" onclick="startScan()" disabled>
+      🔍 &nbsp; ANALYSER VIA API SPRING BOOT
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="loader-ring"></div>
+    <p style="font-size:0.88rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:16px">Analyse en cours via API...</p>
+    <div class="loading-steps">
+      <div class="loading-step" id="step1"><div class="step-dot"></div>Upload du fichier</div>
+      <div class="loading-step" id="step2"><div class="step-dot"></div>Analyse de sécurité</div>
+      <div class="loading-step" id="step3"><div class="step-dot"></div>Génération des tests JUnit</div>
+      <div class="loading-step" id="step4"><div class="step-dot"></div>Sauvegarde en base MySQL</div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results">
+    <div class="result-header">
+      <div class="score-ring">
+        <svg width="88" height="88" viewBox="0 0 88 88">
+          <circle cx="44" cy="44" r="37" fill="none" stroke="rgba(99,179,237,0.1)" stroke-width="6"/>
+          <circle cx="44" cy="44" r="37" fill="none" id="scoreCircle" stroke="#3b82f6" stroke-width="6" stroke-linecap="round" stroke-dasharray="232.48" stroke-dashoffset="232.48"/>
+        </svg>
+        <div class="score-text">
+          <span class="score-num" id="scoreNum">--</span>
+          <span class="score-lbl">/100</span>
+        </div>
+      </div>
+      <div class="result-meta">
+        <h2 id="resultTitle">Analyse terminée</h2>
+        <p id="resultDesc">--</p>
+        <p style="font-size:0.75rem;color:var(--muted);margin-top:4px;font-family:'IBM Plex Mono',monospace" id="scanMeta"></p>
+      </div>
+      <div class="result-actions">
+        <button class="btn-outline" onclick="copyTests()">📋 Copier tests</button>
+        <button class="btn-outline btn-pdf" id="pdfBtn" onclick="downloadPdf()">📄 Télécharger PDF</button>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-n" id="kpiTotal" style="color:var(--accent2)">0</div><div class="kpi-l">Total</div></div>
+      <div class="kpi"><div class="kpi-n" id="kpiCritical" style="color:var(--critical)">0</div><div class="kpi-l">Critical</div></div>
+      <div class="kpi"><div class="kpi-n" id="kpiHigh" style="color:var(--high)">0</div><div class="kpi-l">High</div></div>
+      <div class="kpi"><div class="kpi-n" id="kpiMedium" style="color:var(--medium)">0</div><div class="kpi-l">Medium</div></div>
+      <div class="kpi"><div class="kpi-n" id="kpiLow" style="color:var(--low)">0</div><div class="kpi-l">Low</div></div>
+      <div class="kpi"><div class="kpi-n" id="kpiTests" style="color:#c4b5fd">0</div><div class="kpi-l">Tests JUnit</div></div>
+    </div>
+
+    <div class="sec-title">🔍 Vulnérabilités détectées</div>
+    <div class="vuln-list" id="vulnList"></div>
+
+    <div class="tests-section">
+      <div style="font-size:0.82rem;font-weight:600;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:12px">🧪 Tests JUnit Générés Automatiquement</div>
+      <div class="tests-code" id="testsCode">-- En attente --</div>
+    </div>
+
+    <div class="sec-title">🚦 Security Gate CI/CD</div>
+    <div class="gate-banner" id="gateBanner">
+      <span class="gate-icon" id="gateIcon">⏳</span>
+      <div class="gate-text">
+        <div id="gateTitle">Calcul en cours...</div>
+        <p id="gateDesc"></p>
+      </div>
+    </div>
+
+    <button class="rescan-btn" onclick="resetApp()">↩ Analyser un autre fichier</button>
+  </div>
+
+  <!-- History -->
+  <div class="history-section" id="historySection">
+    <div class="sec-title">📋 Historique des scans</div>
+    <div id="historyList"><div class="empty-history">Aucun scan effectué</div></div>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://localhost:8080/api';
+let currentScan = null;
+let selectedFile = null;
+let currentType = 'code';
+
+// ── API STATUS ────────────────────────────────────────────────
+async function checkApiStatus() {
+  try {
+    const r = await fetch(API + '/health', { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      document.getElementById('apiDot').className = 'api-dot online';
+      document.getElementById('apiStatusText').textContent = 'API connectée';
+      loadHistory();
+    } else throw new Error();
+  } catch {
+    document.getElementById('apiDot').className = 'api-dot';
+    document.getElementById('apiStatusText').textContent = 'API hors ligne';
+  }
+}
+
+// ── TABS ──────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentType = tab.dataset.type;
+
+    const icon = document.getElementById('uploadIcon');
+    const title = document.getElementById('uploadTitle');
+    const sub = document.getElementById('uploadSub');
+
+    if (currentType === 'apk') {
+      icon.textContent = '📱';
+      title.textContent = 'Déposez votre fichier APK ici';
+      sub.innerHTML = 'Format accepté : <span>.apk</span>';
+      document.getElementById('fileInput').accept = '.apk';
+    } else {
+      icon.textContent = '📄';
+      title.textContent = 'Déposez votre fichier de code ici';
+      sub.innerHTML = 'Formats acceptés : <span>.java</span> <span>.py</span> <span>.js</span> <span>.ts</span>';
+      document.getElementById('fileInput').accept = '.java,.py,.js,.ts,.apk';
+    }
+    selectedFile = null;
+    document.getElementById('fileInfo').style.display = 'none';
+    document.getElementById('scanBtn').disabled = true;
+  });
+});
+
+// ── FILE HANDLING ─────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) setFile(e.target.files[0]); });
+
+function setFile(file) {
+  selectedFile = file;
+  const size = (file.size / 1024).toFixed(1);
+  const info = document.getElementById('fileInfo');
+  info.style.display = 'block';
+  info.textContent = `📎 ${file.name}  (${size} KB)`;
+  document.getElementById('scanBtn').disabled = false;
+}
+
+// ── SCAN ──────────────────────────────────────────────────────
+function setStep(n, status) {
+  const step = document.getElementById(`step${n}`);
+  step.className = 'loading-step ' + status;
+  const dot = step.querySelector('.step-dot');
+  dot.className = 'step-dot' + (status === 'active' ? ' spinning' : '');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function startScan() {
+  if (!selectedFile) return;
+
+  document.getElementById('uploadSection').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('loading').classList.add('active');
+
+  setStep(1, 'active');
+  await sleep(400);
+
+  try {
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    setStep(1, 'done'); setStep(2, 'active');
+
+    const response = await fetch(API + '/analyze', {
+      method: 'POST',
+      body: formData
+    });
+
+    setStep(2, 'done'); setStep(3, 'active');
+    await sleep(500);
+    setStep(3, 'done'); setStep(4, 'active');
+    await sleep(400);
+    setStep(4, 'done');
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Erreur API');
+    }
+
+    const data = await response.json();
+    await sleep(300);
+
+    document.getElementById('loading').classList.remove('active');
+    displayResults(data);
+    loadHistory();
+
+  } catch(e) {
+    document.getElementById('loading').classList.remove('active');
+    document.getElementById('uploadSection').style.display = 'block';
+    alert('Erreur: ' + e.message + '\n\nVérifiez que l\'API Spring Boot tourne sur localhost:8080');
+  }
+}
+
+// ── DISPLAY ───────────────────────────────────────────────────
+function displayResults(data) {
+  currentScan = data;
+  const score = data.securityScore;
+  const scoreColor = score >= 80 ? '#34d399' : score >= 50 ? '#fbbf24' : '#f87171';
+  const circumference = 232.48;
+  const offset = circumference - (score / 100) * circumference;
+
+  const scoreCircle = document.getElementById('scoreCircle');
+  scoreCircle.style.strokeDashoffset = offset;
+  scoreCircle.style.stroke = scoreColor;
+
+  document.getElementById('scoreNum').textContent = score;
+  document.getElementById('scoreNum').style.color = scoreColor;
+
+  const total = (data.criticalCount||0) + (data.highCount||0) + (data.mediumCount||0) + (data.lowCount||0);
+  document.getElementById('resultTitle').textContent = `Score de sécurité : ${score >= 80 ? 'Bon ✅' : score >= 50 ? 'Moyen ⚠️' : 'Critique ❌'}`;
+  document.getElementById('resultDesc').textContent = total === 0
+    ? 'Aucune vulnérabilité détectée. Code sécurisé.'
+    : `${total} vulnérabilité(s) — ${data.criticalCount} critique(s), ${data.highCount} haute(s)`;
+  document.getElementById('scanMeta').textContent = `Fichier: ${data.fileName}  |  Langage: ${data.language}  |  ID scan: #${data.id}`;
+
+  document.getElementById('kpiTotal').textContent = total;
+  document.getElementById('kpiCritical').textContent = data.criticalCount || 0;
+  document.getElementById('kpiHigh').textContent = data.highCount || 0;
+  document.getElementById('kpiMedium').textContent = data.mediumCount || 0;
+  document.getElementById('kpiLow').textContent = data.lowCount || 0;
+  document.getElementById('kpiTests').textContent = data.vulnerabilities?.length || 0;
+
+  // Vulnérabilités
+  const vulnList = document.getElementById('vulnList');
+  vulnList.innerHTML = '';
+  if (!data.vulnerabilities?.length) {
+    vulnList.innerHTML = '<div style="text-align:center;padding:40px;color:var(--low);font-size:0.9rem">✅ Aucune vulnérabilité détectée</div>';
+  } else {
+    data.vulnerabilities.forEach(v => {
+      vulnList.innerHTML += `
+      <div class="vuln-card sev-${v.severity}">
+        <div class="vuln-top">
+          <span class="sev-badge ${v.severity}">${v.severity}</span>
+          <span class="vuln-name">${v.name}</span>
+          <span class="cwe-pill">${v.cwe}</span>
+        </div>
+        <div class="vuln-desc">${v.category} — Ligne ${v.lineNumber || 'N/A'}</div>
+        ${v.lineContent ? `<div class="vuln-line">${v.lineContent.replace(/</g,'&lt;').replace(/>/g,'&gt;').substring(0,120)}</div>` : ''}
+        <div class="vuln-rec">💡 ${v.recommendation}</div>
+      </div>`;
+    });
+  }
+
+  // Tests générés
+  document.getElementById('testsCode').textContent = data.generatedTests || '// Aucun test généré';
+
+  // Gate
+  const gate = document.getElementById('gateBanner');
+  if (data.gateStatus === 'BLOCKED') {
+    gate.className = 'gate-banner blocked';
+    document.getElementById('gateIcon').textContent = '❌';
+    document.getElementById('gateTitle').textContent = `BUILD BLOQUÉ — ${data.criticalCount} vulnérabilité(s) CRITICAL`;
+    document.getElementById('gateDesc').textContent = 'Le pipeline CI/CD bloquerait ce déploiement. Corrigez les failles critiques.';
+  } else {
+    gate.className = 'gate-banner pass';
+    document.getElementById('gateIcon').textContent = '✅';
+    document.getElementById('gateTitle').textContent = 'BUILD AUTORISÉ — Security Gate passé';
+    document.getElementById('gateDesc').textContent = 'Aucune vulnérabilité critique. Le déploiement serait autorisé.';
+  }
+
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+function downloadPdf() {
+  if (!currentScan) return;
+  window.open(API + '/report/' + currentScan.id + '/pdf', '_blank');
+}
+
+function copyTests() {
+  if (!currentScan?.generatedTests) return;
+  navigator.clipboard.writeText(currentScan.generatedTests)
+    .then(() => alert('✅ Tests JUnit copiés !'));
+}
+
+async function loadHistory() {
+  try {
+    const r = await fetch(API + '/history');
+    const history = await r.json();
+    const list = document.getElementById('historyList');
+
+    if (!history.length) {
+      list.innerHTML = '<div class="empty-history">Aucun scan effectué</div>';
+      return;
+    }
+
+    list.innerHTML = history.slice(0, 5).map(h => {
+      const score = h.securityScore;
+      const color = score >= 80 ? '#34d399' : score >= 50 ? '#fbbf24' : '#f87171';
+      const total = h.totalVulnerabilities || 0;
+      const date = new Date(h.scanDate).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+      return `
+      <div class="history-card" onclick="loadScan(${h.id})">
+        <div class="history-info">
+          <span style="font-size:1.2rem">${h.fileType === 'APK' ? '📱' : '📄'}</span>
+          <div>
+            <div class="history-file">${h.fileName}</div>
+            <div class="history-date">${date} — ${total} vulnérabilité(s)</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="history-score" style="color:${color}">${score}/100</div>
+          <span style="font-size:0.75rem;padding:3px 10px;border-radius:50px;background:${h.gateStatus==='BLOCKED'?'rgba(248,113,113,0.15)':'rgba(52,211,153,0.15)'};color:${h.gateStatus==='BLOCKED'?'#f87171':'#34d399'}">${h.gateStatus}</span>
+          <a href="${API + '/report/' + h.id + '/pdf'}" target="_blank" onclick="event.stopPropagation()" style="font-size:0.75rem;color:#fca5a5;text-decoration:none">📄 PDF</a>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    console.log('History non disponible');
+  }
+}
+
+async function loadScan(id) {
+  try {
+    const r = await fetch(API + '/history/' + id);
+    const data = await r.json();
+    displayResults(data);
+    document.getElementById('uploadSection').style.display = 'none';
+  } catch(e) {
+    alert('Erreur chargement du scan');
+  }
+}
+
+function resetApp() {
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('uploadSection').style.display = 'block';
+  document.getElementById('fileInfo').style.display = 'none';
+  document.getElementById('loading').classList.remove('active');
+  selectedFile = null;
+  document.getElementById('scanBtn').disabled = true;
+  fileInput.value = '';
+  [1,2,3,4].forEach(n => setStep(n, ''));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Init
+checkApiStatus();
+setInterval(checkApiStatus, 30000);
+</script>
+</body>
+</html>
