@@ -24,16 +24,6 @@
 
 [![Demo Video](https://img.shields.io/badge/▶%20Watch%20Demo-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/CyryhNbXYK0)
 
-**What the demo covers:**
-- ✅ Source code analysis — VulnerableApp.java (15 vulnerabilities, score 0/100)
-- ✅ Android APK analysis — InsecureBankv2.apk (19 vulnerabilities, exported components)
-- ✅ AI prioritization and MASVS/MASTG mapping via Ollama
-- ✅ Auto-generated JUnit 5 regression tests
-- ✅ Security Gate BLOCKED/PASSED decision
-- ✅ PDF report generation
-- ✅ Analytics Dashboard with charts
-
-> 📌 *Replace `https://youtu.be/CyryhNbXYK0` with your YouTube or Google Drive video link*
 
 ---
 
