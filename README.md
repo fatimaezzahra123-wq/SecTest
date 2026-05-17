@@ -39,7 +39,7 @@
 - [API Reference](#-rest-api)
 - [Project Structure](#-project-structure)
 - [Authors](#-authors)
-- [License](#-license)
+
 
 ---
 
