@@ -22,7 +22,7 @@
 
 > **Watch SecTest Generator in action**
 
-[![Demo Video](https://img.shields.io/badge/▶%20Watch%20Demo-YouTube-red?style=for-the-badge&logo=youtube)](YOUR_VIDEO_LINK_HERE)
+[![Demo Video](https://img.shields.io/badge/▶%20Watch%20Demo-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/CyryhNbXYK0)
 
 **What the demo covers:**
 - ✅ Source code analysis — VulnerableApp.java (15 vulnerabilities, score 0/100)
@@ -33,7 +33,7 @@
 - ✅ PDF report generation
 - ✅ Analytics Dashboard with charts
 
-> 📌 *Replace `YOUR_VIDEO_LINK_HERE` with your YouTube or Google Drive video link*
+> 📌 *Replace `https://youtu.be/CyryhNbXYK0` with your YouTube or Google Drive video link*
 
 ---
 
