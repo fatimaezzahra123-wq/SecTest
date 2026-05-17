@@ -47,26 +47,50 @@ public class ScanService {
         // ── Security Gate ─────────────────────────────────────────
         String gateStatus = critical > 0 ? "BLOCKED" : "PASSED";
 
-        // ── Générer les tests (regex standard) ───────────────────
+        // ── Tests standard (regex) ────────────────────────────────
         String tests = testGenerator.generateTests(vulnerabilities, language, fileName);
 
-        // ── Enrichissement IA rapide (seulement 1 vuln CRITICAL) ──
+        // ── Enrichissement IA Ollama ──────────────────────────────
         boolean ollamaAvailable = ollamaService.isAvailable();
         if (ollamaAvailable && !vulnerabilities.isEmpty()) {
             try {
-                // Priorisation rapide (1 seul appel IA)
+                StringBuilder aiSection = new StringBuilder();
+
+                // Priorisation (commun CODE + APK)
                 String prioritization = ollamaService.prioritizeVulnerabilities(vulnerabilities);
+                aiSection.append("\n\n// ── PRIORISATION IA ────────────────────────────────\n")
+                         .append("/*\n").append(prioritization).append("\n*/\n");
 
-                // Mapping MASVS rapide (1 seul appel IA)
-                String masvs = ollamaService.generateMASVSMapping(vulnerabilities);
+                if (isApk) {
+                    // ── Mapping MASVS spécifique Android ─────────
+                    String masvs = ollamaService.generateMASVSMappingAndroid(vulnerabilities);
+                    aiSection.append("\n// ── MAPPING MASVS/MASTG ANDROID ─────────────────────\n")
+                             .append("/*\n").append(masvs).append("\n*/\n");
 
-                // Ajouter au rapport de tests
-                tests = tests + "\n\n// ── PRIORISATION IA ────────────────────────────────\n"
-                      + "/*\n" + prioritization + "\n*/\n"
-                      + "\n// ── MAPPING MASVS/MASTG ─────────────────────────────\n"
-                      + "/*\n" + masvs + "\n*/\n";
+                    // ── Analyse exported components ───────────────
+                    String exported = ollamaService.analyzeExportedComponents(vulnerabilities);
+                    if (!exported.isEmpty() && !exported.contains("non disponible")) {
+                        aiSection.append("\n// ── ANALYSE EXPORTED COMPONENTS ─────────────────────\n")
+                                 .append("/*\n").append(exported).append("\n*/\n");
+                    }
+
+                    // ── Network Security Config ───────────────────
+                    String networkConfig = ollamaService.generateNetworkSecurityConfig(vulnerabilities);
+                    if (!networkConfig.isEmpty() && !networkConfig.contains("non disponible")) {
+                        aiSection.append("\n// ── NETWORK SECURITY CONFIG RECOMMANDÉ ──────────────\n")
+                                 .append("/*\n").append(networkConfig).append("\n*/\n");
+                    }
+
+                } else {
+                    // ── Mapping MASVS standard pour code source ───
+                    String masvs = ollamaService.generateMASVSMapping(vulnerabilities);
+                    aiSection.append("\n// ── MAPPING MASVS/MASTG ─────────────────────────────\n")
+                             .append("/*\n").append(masvs).append("\n*/\n");
+                }
+
+                tests = tests + aiSection.toString();
+
             } catch (Exception e) {
-                // Si Ollama timeout, on continue sans IA
                 tests = tests + "\n// IA non disponible pour cet scan";
             }
         }

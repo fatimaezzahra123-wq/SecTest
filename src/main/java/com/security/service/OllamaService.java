@@ -3,7 +3,6 @@ package com.security.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import com.security.model.Vulnerability;
 import java.util.List;
@@ -51,13 +50,13 @@ public class OllamaService {
             list.append(String.format("%d. [%s] %s\n", i+1, v.getSeverity(), v.getName()));
         }
         String prompt = String.format(
-            "En français, donne l'ordre de priorité de correction pour ces vulnérabilités (réponse courte max 5 lignes):\n%s",
+            "En français, donne l'ordre de priorité de correction pour ces vulnérabilités (max 5 lignes courtes):\n%s",
             list.toString()
         );
         return callOllama(prompt, 200);
     }
 
-    // ── Mapping MASVS ─────────────────────────────────────────────
+    // ── Mapping MASVS pour code source ────────────────────────────
     public String generateMASVSMapping(List<Vulnerability> vulns) {
         StringBuilder list = new StringBuilder();
         for (int i = 0; i < Math.min(vulns.size(), 3); i++) {
@@ -69,6 +68,62 @@ public class OllamaService {
             list.toString()
         );
         return callOllama(prompt, 150);
+    }
+
+    // ── Mapping MASVS spécifique Android APK ─────────────────────
+    public String generateMASVSMappingAndroid(List<Vulnerability> vulns) {
+        StringBuilder list = new StringBuilder();
+        for (int i = 0; i < Math.min(vulns.size(), 5); i++) {
+            Vulnerability v = vulns.get(i);
+            list.append(String.format("- [%s] %s (%s) — %s\n",
+                v.getSeverity(), v.getName(), v.getCwe(), v.getCategory()));
+        }
+        String prompt = String.format(
+            "Tu es expert MASVS Android. Pour ces vulnérabilités d'une APK Android:\n%s\n" +
+            "Donne en français:\n" +
+            "1. Le contrôle MASVS correspondant (ex: MASVS-STORAGE-1, MASVS-NETWORK-1, MASVS-CODE-4)\n" +
+            "2. La recommandation Android spécifique (ex: EncryptedSharedPreferences, Network Security Config)\n" +
+            "3. Un Executive Summary de 2 phrases pour le rapport\n" +
+            "Format: liste courte, max 8 lignes total.",
+            list.toString()
+        );
+        return callOllama(prompt, 300);
+    }
+
+    // ── Analyser les exported components Android ──────────────────
+    public String analyzeExportedComponents(List<Vulnerability> vulns) {
+        StringBuilder list = new StringBuilder();
+        vulns.stream()
+            .filter(v -> v.getCategory() != null && v.getCategory().contains("Exported"))
+            .limit(5)
+            .forEach(v -> list.append(String.format("- %s\n", v.getName())));
+
+        if (list.length() == 0) return "";
+
+        String prompt = String.format(
+            "En français, explique en 3 phrases le risque des composants Android exportés sans permission:\n%s\n" +
+            "Donne 1 exemple d'attaque concret et la correction MASVS recommandée.",
+            list.toString()
+        );
+        return callOllama(prompt, 200);
+    }
+
+    // ── Générer recommandations Network Security Config ───────────
+    public String generateNetworkSecurityConfig(List<Vulnerability> vulns) {
+        boolean hasCleartext = vulns.stream()
+            .anyMatch(v -> v.getName() != null && v.getName().contains("Cleartext"));
+        boolean hasSSL = vulns.stream()
+            .anyMatch(v -> v.getName() != null && (v.getName().contains("SSL") || v.getName().contains("Certificat")));
+
+        if (!hasCleartext && !hasSSL) return "";
+
+        String prompt =
+            "En français, génère un exemple de fichier res/xml/network_security_config.xml Android qui:\n" +
+            (hasCleartext ? "- Désactive le cleartext traffic\n" : "") +
+            (hasSSL ? "- Active le certificate pinning\n" : "") +
+            "- Suit les bonnes pratiques MASVS-NETWORK-1 et MASVS-NETWORK-2\n" +
+            "Retourne UNIQUEMENT le XML, max 20 lignes.";
+        return callOllama(prompt, 250);
     }
 
     // ── Appel HTTP à Ollama ───────────────────────────────────────
