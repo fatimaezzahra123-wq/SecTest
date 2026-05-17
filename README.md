@@ -360,23 +360,13 @@ SecTest/
 | **Fatimaezzahra Ennassiri** | Developer |
 
 **Institution:** National School of Applied Sciences  
-**University:** Chouaib Doukkali University, El Jadida, Morocco  
+**University:** cadi ayad University, MARRAKESH, Morocco  
 **Year:** 2025-2026
 
 </div>
 
 ---
 
-## 📄 License
-
-This project is licensed under the **MIT License**.
-
-```
-MIT License — Copyright (c) 2026 SecTest Team
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software.
-```
 
 ---
 
